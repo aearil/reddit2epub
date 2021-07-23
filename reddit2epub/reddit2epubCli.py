@@ -6,7 +6,7 @@ import click
 import pkg_resources
 from ebooklib import epub
 
-from reddit2epub.reddit2epubLib import get_chapters_from_anchor, create_book_from_chapters
+from reddit2epub.reddit2epubLib import get_chapters_from_anchor, create_book_from_chapters, reddit
 
 
 def print_version(ctx, param, value):
@@ -20,17 +20,29 @@ def print_version(ctx, param, value):
 
 
 @click.command()
+# @click.option('input_url', '--input', '-i', required=True,
+#               help='The url of an arbitrary chapter of the series you want to convert')
 @click.option('input_url', '--input', '-i', required=True,
-              help='The url of an arbitrary chapter of the series you want to convert')
+              help='A file containing a list of URL for all the chapters')
 @click.option('output_filename', '--output', '-o', default="",
               help='The filename of the output epub. Defaults to the first chapter title.')
+@click.option('title', '--title', '-t', default="Reddit book",
+              help='Title of the generated ebook')
 @click.option('--overlap', default=2, help='How many common words do the titles have at the beginning.')
 @click.option('--all-reddit/--no-all-reddit', default=False, help='Search over all reddit. '
                                                                   'Meant for stories which span subreddits')
 @click.option('--version', help="Print version information and exit.", is_flag=True, callback=print_version,
               expose_value=False, is_eager=True)
-def main_cli(input_url: str, overlap: int, output_filename, all_reddit):
-    author, selected_submissions, search_title = get_chapters_from_anchor(input_url, overlap, all_reddit)
+def main_cli(input_url: str, overlap: int, output_filename, all_reddit, title):
+
+    # author, selected_submissions, search_title = get_chapters_from_anchor(input_url, overlap, all_reddit)
+    selected_submissions = []
+    with open(input_url, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            selected_submissions.append(reddit.submission(url=line))
+
+    search_title = title
 
     len_subs = len(selected_submissions)
     print("Total number of found posts with title prefix '{}' in subreddit: {}".format(search_title, len_subs))
@@ -47,12 +59,12 @@ def main_cli(input_url: str, overlap: int, output_filename, all_reddit):
               file=sys.stderr)
 
     # set metadata
-    book_id = selected_submissions[-1].id
-    book_title = selected_submissions[-1].title
-    book_author = author.name
+    book_id = selected_submissions[0].id
+    book_title = title
+    book_author = selected_submissions[0].author.name
 
     # Build the ebook
-    book = create_book_from_chapters(book_author, book_id, book_title, reversed(selected_submissions))
+    book = create_book_from_chapters(book_author, book_id, book_title, selected_submissions)
 
     # replace all non alphanumeric chars through _ for filename sanitation
     if output_filename:

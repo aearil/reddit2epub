@@ -51,6 +51,7 @@ def create_book_from_chapters(
                      <a href="{1}">Original</a>
                      """.format(sub.title, sub.shortlink, sub.selftext_html)
 
+        print("Retrieved chapter '{}'".format(sub.title))
         # add chapter
         book.add_item(c1)
         book_chapters.append(c1)
